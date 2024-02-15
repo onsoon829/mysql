@@ -256,6 +256,7 @@ where d.department_name like '%Executive%';
  서브쿼리는 메인쿼리의 컬럼을 모두 사용할 수 있지만 메인쿼리는 서브쿼리의 컬럼을 사용할 수 없다. 
  질의 결과에 서브쿼리 컬럼을 표시해야 한다면 조인방식으로 
     변환하거나 함수, 스칼라 서브쿼리(scarar subquery)등을 사용해야 한다. 
+    정확한 값이 안주어졌을 때 사용
  조인은 집합간의 곱(Product)의 관계이다. 
  
 외부 쿼리 (메인쿼리)
@@ -332,3 +333,399 @@ from departments
 where department_id = (select department_id
                        from employees 
                        where first_name = 'Lex');
+                       
+-- 'Lex'와 동일한 업무(job_id)를 가진 사원의 이름(first_name), 
+ -- 업무명(job_title), 입사일(hire_date)을 출력하시오.
+ select e.first_name, j.job_title, e.hire_date
+ from employees e inner join jobs j
+ on e.job_id = j.job_id
+ and e.job_id = (select job_id
+				from employees
+				where first_name = 'Lex'); -- 고유값이 저장돼 있는 컬럼은 뽑아오기 가능
+                
+--                 select job_id
+-- 				from employees
+-- 				where first_name = 'Lex';
+-- select first_name
+-- from employees
+-- where job_id = 'AD_VP'; -- 확인용
+
+-- 'IT'에 근무하는 사원이름(first_name), 부서번호을 출력하시오.
+select first_name, department_id
+from employees
+where department_id = (select department_id
+					   from departments
+                       where department_name = 'IT');        
+ 
+ -- 'Bruce'보다 급여를 많이 받은 사원이름(first_name), 부서명, 급여를 출력하시오.
+ select e.first_name, d.department_name, e.salary
+ from employees e inner join departments d
+ on e.department_id = d.department_id
+ where salary> (select salary
+                from employees
+				where first_name = 'Bruce')
+order by salary;                
+
+-- Steven와 같은 부서에서 근무하는 사원의 이름, 급여, 입사일을 출력하시오.(in)
+select first_name, salary, hire_date
+from employees
+where department_id in (select department_id
+                        from employees
+					    where first_name = 'steven');
+ 
+ -- 부서별로 가장 급여를 많이 받는 사원이름, 부서번호, 급여를 출력하시오.(in)
+ select department_id, max(salary)
+ from employees
+ group by department_id;
+ 
+ select first_name, department_id, salary
+ from employees
+ where (department_id, salary) in ( select department_id, max(salary) -- where 에는 그룹변수, 함수 사용 안된다.
+										 from employees
+										 group by department_id)
+ order by department_id asc;
+ 
+ -- 30소속된 사원들 중에서 급여를 가장 받은 사원보다 더 많은 급여를 받는
+-- 사원이름, 급여, 입사일을 출력하시오. (ALL)
+-- (서브쿼리에서 max()함수를 사용하지 않는다); all: and의 의미, max 사용법
+select salary
+from employees
+where department_id = 30;
+
+select first_name, salary, hire_date
+from employees
+where salary > all (select salary
+				from employees
+				where department_id = 30);
+-- where salary > (select max(salary)
+-- 				from employees
+-- 				where department_id = 30); -- 이것도 가능하다.               
+
+-- 30소속된 사원들이 받은 급여보다  높은 급여를 받는 
+-- 사원이름, 급여, 입사일을 출력하시오. (ANY)
+-- (서브쿼리에서 min()함수를 사용하지 않는다); any: or의 의미
+select salary
+from employees
+where department_id = 30;
+
+select first_name, salary, hire_date
+from employees
+where salary > any(select salary
+					from employees
+					where department_id = 30);
+                    
+-- 사원이 있는 부서만 출력하시오
+select department_id, department_name
+from departments;  /* 27 row*/
+
+select distinct department_id -- distinct: 중복된 결과를 제거하고 가져오기, select에 붙여서 쓴다
+from employees; /* 12 row*/
+
+select department_id, department_name
+from departments
+where department_id in(select distinct department_id 
+                       from employees); /* 11 row*/   
+                       
+/*-----------------------------------------------------
+ 상관관계 서브쿼리
+ : 서브쿼리에서 메인쿼리의 컬럼을 참조한다.(메인쿼리를 먼저수행한다.)
+   서브쿼리는 메인쿼리 각각의 행에 대해서 순서적으로 한번씩 실행한다.
+ <아래 쿼리 처리순서>
+ 1st : 바깥쪽 쿼리의 첫째 row에 대하여 
+ 2nd : 안쪽 쿼리에서 자신의 속해있는 부서의 MAX salary과
+       비교하여 true 이면 바깥의 컬럼값을 반환하고 , 
+       false 이면 값을 버린다. 
+ 3rd : 바깥쪽 쿼리의 두 번째 row에 대하여 마찬가지로 실행하며, 
+       이렇게 바깥쪽 쿼리의 마지막 row까지 실행한다. 
+	   
+https://www.w3resource.com/sql/subqueries/correlated-subqueries-using-aliases.php	   
+----------------------------------------------------*/
+-- 부서별 최고 급여를 받는 사원을 출력하시오.
+select department_id, max(salary)
+from employees
+group by department_id;
+
+select department_id, salary, first_name, hire_date
+from employees
+where (department_id, salary) in (select department_id, max(salary)
+                                       from employees
+										group by department_id);
+                                        
+select department_id, salary, first_name, hire_date
+from employees e
+where salary =(select max(salary)
+               from employees
+			   where department_id = e .department_id)
+order by department_id                                ;
+
+-- 사원이 있는 부서만 출력하시오.
+select department_id, department_name
+from departments d
+where exists(select 1 -- exists: 서브쿼리 결과가 비어있는지 여부를 확인하는 조건 연산자.
+             from employees e
+             where e.department_id = d.department_id);
+     
+-- 사원이 없는 부서만 출력하시오.
+select department_id, department_name
+from departments d
+where not exists(select 1
+             from employees e
+             where e.department_id = d.department_id);
+             
+-- 부서가 없는 사원의 정보을 출력하시오.
+select e.employee_id, e.first_name, e.department_id
+from employees e
+where not exists(select 1
+             from departments d
+             where e.department_id = d.department_id);             
+
+-- 관리자가 있는 사원의 정보를 출력하시오.
+select e.employee_id, e.first_name, e.department_id, manager_id
+from employees e
+where exists(select 1
+             from employees m
+             where m.employee_id = e.manager_id);
+             
+-- 관리자가 없는 사원의 정보를 출력하시오.
+select e.employee_id, e.first_name, e.department_id, manager_id
+from employees e
+where not exists(select 1
+             from employees m
+             where m.employee_id = e.manager_id);       
+		
+/*-----------------------------------------------------------
+       문제
+ -------------------------------------------------------------*/
+-- 1) department_id가 60인 부서의 도시명을 알아내는 SELECT문장을 기술하시오
+select city
+from locations
+where location_id = (select location_id
+					 from departments
+					 where department_id = 60);
+                    
+-- 2)사번이 107인 사원과 부서가같고,167번의 급여보다 많은 사원들의 사번,이름(first_name),급여를 출력하시오.
+select employee_id, department_id
+from employees
+where employee_id = 107; -- 부서: 60
+
+select employee_id, salary
+from employees
+where employee_id = 167; -- 급여: 6200
+
+select employee_id, first_name, salary -- department_id
+from employees
+where department_id = (select department_id -- where에서 select 쓸 때 컬럼은 하나씩밖에 못가져온다.
+						from employees
+						where employee_id = 107)
+and salary > (select salary
+				from employees
+				where employee_id = 167);                        
+
+
+              
+-- 3) 급여평균보다 급여를 적게받는 사원들중 커미션을 받는 사원들의 사번,이름(first_name),급여,커미션 퍼센트를 출력하시오.
+ select avg(salary)
+ from employees; -- 6461.831776
+ 
+ select employee_id, first_name, salary, commission_pct
+ from employees
+ where salary < (select avg(salary)
+				from employees) 
+and commission_pct is not null
+order by salary desc;
+  
+-- 4)각 부서의 최소급여가 20번 부서의 최소급여보다 많은 부서의 번호와 그부서의 최소급여를 출력하시오.
+select department_id, min(salary)
+from employees
+group by department_id
+order by min(salary) asc; -- 부서: 20, 최소급여: 6000
+
+select department_id, min(salary)
+from employees
+group by department_id
+having min(salary) > (select min(salary)
+                      from employees
+					  where department_id = 20)
+order by min(salary) asc;                      
+-- 5) 사원번호가 177인 사원과 담당 업무가 같은 사원의 사원이름(first_name)과 담당업무(job_id)하시오.   
+select employee_id, first_name, job_id
+from employees
+where employee_id = 177; -- SA_REP
+
+select first_name, job_id
+from employees
+where job_id = (select job_id
+				from employees
+				where employee_id = 177);
+                
+-- 6) 최소 급여를 받는 사원의 이름(first_name), 담당 업무(job_id) 및 급여(salary)를 표시하시오(그룹함수 사용).
+select min(salary)
+from employees;
+
+select first_name, job_id, salary
+from employees
+where salary = (select min(salary)
+				from employees);
+
+
+-- 7) 각 부서의 최소 급여를 받는 사원의 이름(first_name), 급여(salary), 부서번호(department_id)를 표시하시오.
+select department_id, min(salary)
+from employees
+group by department_id;
+
+select first_name, salary, department_id
+from employees
+where (department_id, salary) in (select department_id, min(salary)
+									from employees
+									group by department_id);    
+
+-- 8)담당 업무가 프로그래머(IT_PROG)인 모든 사원보다 급여가 적으면서 
+-- 업무가 프로그래머(IT_PROG)가 아닌  사원들의 사원번호(employee_id), 이름(first_name), 
+-- 담당 업무(job_id), 급여(salary))를 출력하시오.
+select salary
+from employees
+where job_id = 'IT_PROG'
+order by salary asc; -- 4200
+
+select employee_id, first_name, job_id, salary
+from employees
+where salary < all (select salary
+				from employees
+				where job_id = 'IT_PROG');
+-- and job_id <> 'IT_PROG';                
+-- 9)부하직원이 없는 모든 사원의 이름을 표시하시오.
+select first_name, employee_id, manager_id
+from employees e
+where exists(select 1
+             from employees m
+             where m.manager_id = e.employee_id);
+
+select e.employee_id, e.first_name, e.employee_id, manager_id
+from employees e
+where exists(select 1
+             from employees m
+             where m.manager_id = e.employee_id);           
+             
+/*=============================
+ WITH ROLLUP
+ 총합 또는 중간 합계가 필요할때 GROUP by 절과 함께 WITH ROLLUP문을 사용한다.
+ ================================*/
+ select department_id, job_id, count(*) as count
+ from employees
+ group by department_id, job_id with rollup
+ order by department_id desc, job_id;
+ 
+/*=================================================================================
+ 그룹내 순위관련함수
+ RANK( ) OVER( ) : 특정 컬럼에 대한 순위를 구하는 함수로 동일한 값에 대해서는 동일한 순위를 준다. 
+ DENSE_RANK( ) OVER( ) : 동일한 순위를 하나의 건수로 취급한다.
+ ROW_NUMBER( ) OVER( ) : 동일한 값이라도 고유한 순위를 부여한다.
+ ===================================================================================*/
+ /* rank      dense_rank       row_numder
+90  1             1              1
+90  1             1              2
+85  3             2              3
+80  4             3              4
+89 */
+
+select job_id, first_name, salary, rank() over(order by salary desc)
+from employees;
+
+select job_id, first_name, salary, dense_rank() over(order by salary desc)
+from employees; 
+
+select job_id, first_name, salary, row_number()over(order by salary desc)
+from employees;
+
+select job_id, first_name, salary, row_number()over()
+from employees
+order by salart desc;
+
+-- 그룹별로 순위를 부여할 때 사용: partition by
+select job_id, first_name, salary, rank()over(order by salary desc)
+from employees;
+
+-- 그룹별로 순위를 부여할 때 사용: partition
+select job_id, first_name, salary, rank()over(partition by job_id order by salary desc)
+from employees;
+-- 급여가 가장 높은 상위 3맹을 보나
+
+select row_number() over () as rownum, first_name, salary
+ from employees
+ limit 3; -- 갯수
+
+-- john 14000.00 
+select row_number() over(order by salary desc)as rownum, first_name, salary
+from employees
+limit 3, 5;
+
+select row_number() over(order by salary desc)as rownum, first_name, salary
+from employees
+limit 5 offset 3;
+
+-- 월 별 입사자 수를 조회하되 입사자수가 가장 많은 상위 3개만 출력되도록 하시오.
+--  <출력:   월     입사자수 >
+select month(hire_date) as 월, count(*) as 입사자수     -- 교재 225페이지
+from employees
+group by month(hire_date)
+order by count(*) desc
+limit 3;
+
+/* ================================================================================
+with 절과 cte
+
+with절은 cte(common table expression)을 표현하기 위한 구문으로 Mtsql8.0부터 사용할 수 있다.
+cte는 기존의 뷰, 파생테이블, 임시 테이블 등으로 사용되던 것을 대신할 수 있다.
+cte는 ANSI-SQL99 표준에서 나온 것이다. 기존의 SQL ANSI-SQL92를 기준으로 한다.
+최근의 DBMS(database management system)은 대개 ANSI-SQL99와 호환되므로 다른 DBMS에서도 같거나
+비슷한 방식으로 응용한다.
+cte는 비재귀적(non-recursive) cte와 재귀적(recursive) cte 두 가지가 있다.
+
+(비재귀적(non recursive) cte>
+with 테이블이름(열이름)
+as
+(
+ 쿼리문;
+)
+select 열이름 from cte_테이블 이름;
+===================================================================================*/
+with abc(f, s)
+as
+(select first_name, salary 
+from employees
+where department_id = 90)
+
+select f, s from abc;
+
+/*=========================================
+<재귀적(recursive)*/
+
+-- 매니저 -> 사원
+with recursive cte (employee_id, manager_id, level, first_name) as(
+select employee_id, manager_id, 1, first_name
+from employees
+where manager_id is null
+union all
+select e.employee_id, e.manager_id, cte.level + 1, e.first_name
+from employees e
+inner join cte on e.manager_id = cte.employee_id
+)
+select employee_id, level, concat(repeat(' ', 3 * (level - 1)), first_name)as name
+from cte
+order by employee_id;
+
+-- https://mariadb.com/kb/en/recursive-common-table-expressions-overview/
+
+-- 사원 -> 메니저
+with recursive cte (employee_id, manager_id, level, first_name) as(
+select employee_id, manager_id, 1, first_name
+from employees
+where manager_id is null
+union all
+select e.employee_id, e.manager_id, cte.level + 1, e.first_name
+from employees e
+inner join cte on e.manager_id = cte.employee_id
+)
+select employee_id, level, concat(repeat(' ', 3 * (level - 1)), first_name)as name
+from cte
+order by employee_id;
