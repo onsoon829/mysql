@@ -262,3 +262,202 @@ end $$
 delimiter ;
 
 call whileproc2();
+
+/*=====Java001_plsql ======*/
+
+-- 테이블생성
+CREATE TABLE pltest(
+  num int,
+  message varchar(50)
+);
+
+-- 프로시저 생성
+DROP PROCEDURE IF EXISTS pro_pltest; 
+
+DELIMITER $$
+CREATE PROCEDURE projdbc
+(IN msg  varchar(20))
+
+BEGIN
+  DECLARE i int;
+  SET i = 1;
+  while i<=5 do
+    INSERT INTO pltest VALUES(i,concat(msg,'_', i));
+   SET i = i + 1;
+  end while;
+  commit;
+END $$
+DELIMITER ;
+
+CALL pro_pltest('korea');
+
+/*=====Java001_plsql ======*/
+
+-- 테이블생성
+CREATE TABLE pltest(
+  num int,
+  message varchar(50)
+);
+
+-- 프로시저 생성
+DROP PROCEDURE IF EXISTS pro_pltest; 
+
+DELIMITER $$
+CREATE PROCEDURE projdbc
+(IN msg  varchar(20))
+
+BEGIN
+  DECLARE i int;
+  SET i = 1;
+  while i<=5 do
+    INSERT INTO pltest VALUES(i,concat(msg,'_', i));
+   SET i = i + 1;
+  end while;
+  commit;
+END $$
+DELIMITER ;
+
+CALL pro_pltest('korea');
+
+*/
+/*=====Java001_plsql ======*/
+
+-- 테이블생성
+CREATE TABLE pltest(
+  num int,
+  message varchar(50)
+);
+
+-- 프로시저 생성
+DROP PROCEDURE IF EXISTS pro_pltest; 
+
+DELIMITER $$
+CREATE PROCEDURE projdbc
+(IN msg  varchar(20))
+
+BEGIN
+  DECLARE i int;
+  SET i = 1;
+  while i<=5 do
+    INSERT INTO pltest VALUES(i,concat(msg,'_', i));
+   SET i = i + 1;
+  end while;
+  commit;
+END $$
+DELIMITER ;
+
+CALL pro_pltest('korea');
+
+-- ==================================================
+
+/*=====Java001_plsql ======*/
+
+-- 테이블생성
+CREATE TABLE pltest(
+  num int,
+  message varchar(50)
+);
+
+-- 프로시저 생성
+DROP PROCEDURE IF EXISTS pro_pltest; 
+
+DELIMITER $$
+CREATE PROCEDURE pro_pltest
+(IN msg  varchar(20))
+
+BEGIN
+  DECLARE i int;
+  SET i = 1;
+  while i<=5 do
+    INSERT INTO pltest VALUES(i,concat(msg,'_', i));
+   SET i = i + 1;
+  end while;
+  commit;
+END $$
+DELIMITER ;
+
+CALL pro_pltest('korea');
+
+SELECT * FROM pltest;
+
+/*============Java002_plsql=========================*/
+use mywork;
+DROP PROCEDURE IF EXISTS pro_mem_inmode; 
+
+
+CREATE TABLE mem(
+	 num int primary key auto_increment,
+	 name varchar(10) not null,
+	 age int default 1,
+	 loc varchar(50)
+	);
+	
+	
+DELIMITER $$
+CREATE PROCEDURE pro_mem_inmode(
+    IN v_name VARCHAR(20),
+    IN v_age int,
+    IN v_loc VARCHAR(50)    
+)
+BEGIN
+    IF v_name IS NULL THEN
+        SET v_name = '홍길동';
+    END IF;
+    
+    IF v_age IS NULL THEN
+       SET v_age = 1;
+	END IF;
+
+    IF v_loc IS NULL THEN
+        SET v_loc = '서울';
+    END IF;
+
+    INSERT INTO mem(name, age, loc)
+    VALUES(v_name, v_age, v_loc);
+END $$
+DELIMITER ;
+
+CALL pro_mem_inmode('김민재', 40, '춘천');
+
+
+SELECT * FROM mem;
+
+/*============Java003_plsql=========================*/
+use myxedb;
+
+DROP PROCEDURE IF EXISTS pl_emplist; 
+
+DELIMITER $$
+
+CREATE PROCEDURE pl_emplist(IN v_deptno INT)
+BEGIN
+    SELECT employee_id, first_name, salary, department_id
+    FROM employees
+    WHERE department_id = v_deptno;  
+END $$
+
+DELIMITER ;
+
+CALL pl_emplist(20);
+
+/*============Java004_plsql=========================*/
+use myxedb;
+
+DROP PROCEDURE IF EXISTS my_select; 
+
+DELIMITER $$
+CREATE PROCEDURE  my_select
+  (IN v_empid  int,
+  OUT v_name  varchar(20) ,
+  OUT v_salary  int)
+
+BEGIN 
+  SELECT first_name,salary 
+  INTO v_name,v_salary
+  FROM employees
+  WHERE employee_id=v_empid;
+END $$
+DELIMITER ;
+
+CALL my_select(100, @my_name, @my_salary);
+SELECT CONCAT('name:', @my_name),CONCAT('salary:', @my_salary);
